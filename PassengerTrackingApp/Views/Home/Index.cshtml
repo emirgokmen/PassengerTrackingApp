@@ -1,0 +1,55 @@
+﻿@model List<PassengerTrackingApp.Models.Passenger>
+@{
+    ViewData["Title"] = "Yolcu Takip Listesi";
+}
+
+<div class="container mt-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold text-dark">Havalimanı Yolcu Hizmet Paneli</h2>
+            <p class="text-muted mb-0">Hasta ve engelli yolcu operasyonel takip listesi</p>
+        </div>
+        <button class="btn btn-primary" type="button">+ Yeni Yolcu Ekle</button>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-0">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th>#</th>
+                        <th>Yolcu Adı</th>
+                        <th>Uçuş No</th>
+                        <th>Hizmet Türü</th>
+                        <th>Durum</th>
+                        <th>İşlem</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td>@item.Id</td>
+                            <td class="fw-bold">@item.FullName</td>
+                            <td><span class="badge bg-secondary">@item.FlightNumber</span></td>
+                            <td>@item.ServiceType</td>
+                            <td>
+                                @if (item.Status == "Bekliyor")
+                                {
+                                    <span class="badge bg-warning text-dark">@item.Status</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-success">@item.Status</span>
+                                }
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-danger">Sil</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
