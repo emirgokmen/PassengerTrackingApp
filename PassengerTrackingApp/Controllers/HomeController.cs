@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
 using PassengerTrackingApp.Models;
-using System.Diagnostics;
 
 namespace PassengerTrackingApp.Controllers
 {
