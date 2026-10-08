@@ -9,12 +9,15 @@
             <h2 class="fw-bold text-dark">Havalimanı Yolcu Hizmet Paneli</h2>
             <p class="text-muted mb-0">Hasta ve engelli yolcu operasyonel takip listesi</p>
         </div>
-        <button class="btn btn-primary" type="button">+ Yeni Yolcu Ekle</button>
+        <!-- Modal Açma Butonu -->
+        <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#newPassengerModal">
+            + Yeni Yolcu Ekle
+        </button>
     </div>
 
     <div class="card shadow-sm border-0">
         <div class="card-body p-0">
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0" id="passengerTable">
                 <thead class="table-dark">
                     <tr>
                         <th>#</th>
@@ -53,3 +56,100 @@
         </div>
     </div>
 </div>
+
+<!-- Yeni Yolcu Ekleme Modalı -->
+<div class="modal fade" id="newPassengerModal" tabindex="-1" aria-labelledby="modalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalLabel">Yeni Yolcu Kaydı</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <div class="modal-body">
+                <form id="passengerForm">
+                    <div class="mb-3">
+                        <label class="form-label">Yolcu Adı Soyadı</label>
+                        <input type="text" class="form-control" id="fullName" required placeholder="Örn: Selim Arda">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Uçuş Numarası</label>
+                        <input type="text" class="form-control" id="flightNumber" required placeholder="Örn: TK2410">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Hizmet Türü</label>
+                        <select class="form-select" id="serviceType">
+                            <option value="Tekerlekli Sandalye">Tekerlekli Sandalye</option>
+                            <option value="Sedye">Sedye</option>
+                            <option value="Görme Engelli Refakat">Görme Engelli Refakat</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Durum</label>
+                        <select class="form-select" id="status">
+                            <option value="Bekliyor">Bekliyor</option>
+                            <option value="Hizmet Verildi">Hizmet Verildi</option>
+                        </select>
+                    </div>
+                    <div class="modal-footer px-0 pb-0">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                        <button type="submit" class="btn btn-primary">Kaydet</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Dinamik JavaScript & Fetch İletişimi -->
+<script>
+    document.getElementById("passengerForm").addEventListener("submit", function(e) {
+        e.preventDefault(); // Sayfanın beyazlayıp yenilenmesini engeller
+
+        // Form alanlarındaki veriyi JSON objesine çevir
+        const newPassenger = {
+            fullName: document.getElementById("fullName").value,
+            flightNumber: document.getElementById("flightNumber").value,
+            serviceType: document.getElementById("serviceType").value,
+            status: document.getElementById("status").value
+        };
+
+        // Backend'e POST isteği at
+        fetch('/Home/AddPassenger', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(newPassenger)
+        })
+            .then(response => {
+                if (!response.ok) throw new Error("Kayıt eklenemedi");
+                return response.json();
+            })
+            .then(data => {
+                // Tabloya yeni satırı dinamik olarak ekle (DOM Manipülasyonu)
+                const tableBody = document.querySelector("#passengerTable tbody");
+                const statusBadge = data.status === "Bekliyor"
+                    ? `<span class="badge bg-warning text-dark">${data.status}</span>`
+                    : `<span class="badge bg-success">${data.status}</span>`;
+
+                const newRow = `
+                    <tr>
+                        <td>${data.id}</td>
+                        <td class="fw-bold">${data.fullName}</td>
+                        <td><span class="badge bg-secondary">${data.flightNumber}</span></td>
+                        <td>${data.serviceType}</td>
+                        <td>${statusBadge}</td>
+                        <td><button class="btn btn-sm btn-outline-danger">Sil</button></td>
+                    </tr>
+                `;
+                tableBody.insertAdjacentHTML('beforeend', newRow);
+
+                // Modalı kapat ve formu temizle
+                const modalElement = document.getElementById('newPassengerModal');
+                const modal = bootstrap.Modal.getInstance(modalElement);
+                modal.hide();
+                document.getElementById("passengerForm").reset();
+            })
+            .catch(err => alert("Hata oluştu: " + err.message));
+    });
+</script>

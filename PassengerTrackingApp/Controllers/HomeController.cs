@@ -1,31 +1,45 @@
 using Microsoft.AspNetCore.Mvc;
+using PassengerTrackingApp.Data;
 using PassengerTrackingApp.Models;
 
 namespace PassengerTrackingApp.Controllers
 {
     public class HomeController : Controller
     {
+        // Gerçek veritabanı köprümüz
+        private readonly AppDbContext _context;
+
+        // Constructor Injection: Program.cs'te tanıttığımız DbContext buraya otomatik enjekte edilir
+        public HomeController(AppDbContext context)
+        {
+            _context = context;
+        }
+
+        // 1. Veritabanındaki tüm yolcuları çekip View'a gönderen GET metodu
         public IActionResult Index()
         {
-            var passengers = new List<Passenger>
-    {
-        new Passenger { Id = 1, FullName = "Ahmet Yılmaz", FlightNumber = "TK2140", ServiceType = "Tekerlekli Sandalye", Status = "Bekliyor" },
-        new Passenger { Id = 2, FullName = "Ayşe Kaya", FlightNumber = "TK1881", ServiceType = "Sedye", Status = "Hizmet Verildi" },
-        new Passenger { Id = 3, FullName = "Mehmet Demir", FlightNumber = "PC2023", ServiceType = "Tekerlekli Sandalye", Status = "Bekliyor" }
-    };
-
-            return View(passengers); // Model'i doğrudan View'a parametre olarak fırlatıyoruz!
+            // SQL karşılığı: SELECT * FROM Passengers
+            var passengers = _context.Passengers.ToList();
+            return View(passengers);
         }
 
-        public IActionResult Privacy()
+        // 2. JavaScript Fetch API'den gelen yolcuyu SQL'e kaydeden POST metodu
+        [HttpPost]
+        public IActionResult AddPassenger([FromBody] Passenger newPassenger)
         {
-            return View();
-        }
+            if (newPassenger == null || string.IsNullOrWhiteSpace(newPassenger.FullName))
+            {
+                return BadRequest("Geçersiz yolcu bilgisi!");
+            }
 
-        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-        public IActionResult Error()
-        {
-            return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+            // Entity Framework takip mekanizmasına yeni yolcuyu ekle
+            _context.Passengers.Add(newPassenger);
+
+            // Değişiklikleri fiziksel olarak SQL Server'a kaydet (INSERT INTO Passengers ...)
+            _context.SaveChanges();
+
+            // SQL'in otomatik oluşturduğu Id ile birlikte nesneyi JSON olarak geri dön
+            return Ok(newPassenger);
         }
     }
 }
