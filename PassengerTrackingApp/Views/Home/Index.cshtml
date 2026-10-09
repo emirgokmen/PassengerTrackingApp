@@ -47,7 +47,7 @@
                                 }
                             </td>
                             <td>
-                                <button class="btn btn-sm btn-outline-danger">Sil</button>
+                                <button class="btn btn-sm btn-outline-danger" onclick="deletePassenger(@item.Id, this)">Sil</button>
                             </td>
                         </tr>
                     }
@@ -102,7 +102,8 @@
 
 <!-- Dinamik JavaScript & Fetch İletişimi -->
 <script>
-    document.getElementById("passengerForm").addEventListener("submit", function(e) {
+    // 1. FORM SUBMIT DINLEYICISI (Sadece yeni yolcu ekler)
+    document.getElementById("passengerForm").addEventListener("submit", function (e) {
         e.preventDefault(); // Sayfanın beyazlayıp yenilenmesini engeller
 
         // Form alanlarındaki veriyi JSON objesine çevir
@@ -121,35 +122,58 @@
             },
             body: JSON.stringify(newPassenger)
         })
-            .then(response => {
-                if (!response.ok) throw new Error("Kayıt eklenemedi");
-                return response.json();
-            })
-            .then(data => {
-                // Tabloya yeni satırı dinamik olarak ekle (DOM Manipülasyonu)
-                const tableBody = document.querySelector("#passengerTable tbody");
-                const statusBadge = data.status === "Bekliyor"
-                    ? `<span class="badge bg-warning text-dark">${data.status}</span>`
-                    : `<span class="badge bg-success">${data.status}</span>`;
+        .then(response => {
+            if (!response.ok) throw new Error("Kayıt eklenemedi");
+            return response.json();
+        })
+        .then(data => {
+            // Tabloya yeni satırı dinamik olarak ekle (DOM Manipülasyonu)
+            const tableBody = document.querySelector("#passengerTable tbody");
+            const statusBadge = data.status === "Bekliyor"
+                ? `<span class="badge bg-warning text-dark">${data.status}</span>`
+                : `<span class="badge bg-success">${data.status}</span>`;
 
-                const newRow = `
-                    <tr>
-                        <td>${data.id}</td>
-                        <td class="fw-bold">${data.fullName}</td>
-                        <td><span class="badge bg-secondary">${data.flightNumber}</span></td>
-                        <td>${data.serviceType}</td>
-                        <td>${statusBadge}</td>
-                        <td><button class="btn btn-sm btn-outline-danger">Sil</button></td>
-                    </tr>
-                `;
-                tableBody.insertAdjacentHTML('beforeend', newRow);
+            // DİKKAT: Eklenen yeni butonun da silme fonksiyonunu tetikleyebilmesi için onclick eklendi
+            const newRow = `
+                <tr>
+                    <td>${data.id}</td>
+                    <td class="fw-bold">${data.fullName}</td>
+                    <td><span class="badge bg-secondary">${data.flightNumber}</span></td>
+                    <td>${data.serviceType}</td>
+                    <td>${statusBadge}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deletePassenger(${data.id}, this)">Sil</button>
+                    </td>
+                </tr>
+            `;
+            tableBody.insertAdjacentHTML('beforeend', newRow);
 
-                // Modalı kapat ve formu temizle
-                const modalElement = document.getElementById('newPassengerModal');
-                const modal = bootstrap.Modal.getInstance(modalElement);
-                modal.hide();
-                document.getElementById("passengerForm").reset();
-            })
-            .catch(err => alert("Hata oluştu: " + err.message));
+            // Modalı kapat ve formu temizle
+            const modalElement = document.getElementById('newPassengerModal');
+            const modal = bootstrap.Modal.getInstance(modalElement);
+            modal.hide();
+            document.getElementById("passengerForm").reset();
+        })
+        .catch(err => alert("Hata oluştu: " + err.message));
     });
+
+    // 2. SILME FONKSIYONU 
+    function deletePassenger(id, buttonElement) {
+        if (!confirm("Bu yolcu kaydını silmek istediğinize emin misiniz?")) {
+            return; // Kullanıcı iptale basarsa dur
+        }
+
+        // Backend'e silme isteği fırlat
+        fetch('/Home/DeletePassenger?id=' + id, {
+            method: 'POST'
+        })
+        .then(response => {
+            if (!response.ok) throw new Error("Silme işlemi başarısız!");
+
+            // Butona en yakın <tr> (tablo satırı) elementini bul ve DOM'dan kaldır
+            const row = buttonElement.closest('tr');
+            row.remove();
+        })
+        .catch(err => alert("Hata: " + err.message));
+    }
 </script>

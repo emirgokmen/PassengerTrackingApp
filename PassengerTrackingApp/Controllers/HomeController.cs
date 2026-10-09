@@ -41,5 +41,21 @@ namespace PassengerTrackingApp.Controllers
             // SQL'in otomatik oluşturduğu Id ile birlikte nesneyi JSON olarak geri dön
             return Ok(newPassenger);
         }
+
+        [HttpPost]
+        public IActionResult DeletePassenger(int id)
+        {
+            var passenger = _context.Passengers.Find(id);
+            if (passenger == null)
+            {
+                return NotFound("Yolcu bulunamadı!");
+            }
+
+            _context.Passengers.Remove(passenger);
+            _context.SaveChanges();
+
+            return Ok();
+        }
+
     }
 }
