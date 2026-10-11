@@ -57,5 +57,25 @@ namespace PassengerTrackingApp.Controllers
             return Ok();
         }
 
+        [HttpPost]
+        public IActionResult ToggleStatus(int id)
+        {
+            // 1. Veritabanında bu Id'ye sahip yolcuyu bul
+            var passenger = _context.Passengers.Find(id);
+            if (passenger == null)
+            {
+                return NotFound("Yolcu bulunamadı!");
+            }
+
+            // 2. Durumu tersine çevir (Ternary If)
+            passenger.Status = (passenger.Status == "Bekliyor") ? "Hizmet Verildi" : "Bekliyor";
+
+            // 3. Değişikliği fiziksel olarak SQL Server'a kaydet (UPDATE sorgusu çalışır)
+            _context.SaveChanges();
+
+            // 4. Yeni oluşan durumu JSON nesnesi olarak JavaScript'e geri dön
+            return Ok(new { newStatus = passenger.Status });
+        }
+
     }
 }

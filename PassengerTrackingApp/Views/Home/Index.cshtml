@@ -15,6 +15,44 @@
         </button>
     </div>
 
+    <!-- Canlı İstatistik Sayaç Kartları -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm bg-primary text-white p-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-white-50 mb-1">Toplam Yolcu</h6>
+                        <h2 class="fw-bold mb-0" id="totalCount">@Model.Count</h2>
+                    </div>
+                    <div class="fs-1 opacity-50">👥</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm bg-warning text-dark p-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-muted mb-1">Bekleyenler</h6>
+                        <h2 class="fw-bold mb-0" id="waitingCount">@Model.Count(x => x.Status == "Bekliyor")</h2>
+                    </div>
+                    <div class="fs-1 opacity-50">⏳</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm bg-success text-white p-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-white-50 mb-1">Tamamlanan Hizmetler</h6>
+                        <h2 class="fw-bold mb-0" id="completedCount">@Model.Count(x => x.Status == "Hizmet Verildi")</h2>
+                    </div>
+                    <div class="fs-1 opacity-50">✅</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
     <div class="card shadow-sm border-0">
         <div class="card-body p-0">
             <table class="table table-hover align-middle mb-0" id="passengerTable">
@@ -37,14 +75,12 @@
                             <td><span class="badge bg-secondary">@item.FlightNumber</span></td>
                             <td>@item.ServiceType</td>
                             <td>
-                                @if (item.Status == "Bekliyor")
-                                {
-                                    <span class="badge bg-warning text-dark">@item.Status</span>
-                                }
-                                else
-                                {
-                                    <span class="badge bg-success">@item.Status</span>
-                                }
+                                <span class="badge @(item.Status == "Bekliyor" ? "bg-warning text-dark" : "bg-success")"
+                                      style="cursor: pointer;"
+                                      onclick="toggleStatus(@item.Id, this)"
+                                      title="Durumu değiştirmek için tıkla">
+                                    @item.Status
+                                </span>
                             </td>
                             <td>
                                 <button class="btn btn-sm btn-outline-danger" onclick="deletePassenger(@item.Id, this)">Sil</button>
@@ -129,24 +165,31 @@
         .then(data => {
             // Tabloya yeni satırı dinamik olarak ekle (DOM Manipülasyonu)
             const tableBody = document.querySelector("#passengerTable tbody");
-            const statusBadge = data.status === "Bekliyor"
-                ? `<span class="badge bg-warning text-dark">${data.status}</span>`
-                : `<span class="badge bg-success">${data.status}</span>`;
+                const badgeClass = data.status === "Bekliyor" ? "bg-warning text-dark" : "bg-success";
 
-            // DİKKAT: Eklenen yeni butonun da silme fonksiyonunu tetikleyebilmesi için onclick eklendi
-            const newRow = `
-                <tr>
-                    <td>${data.id}</td>
-                    <td class="fw-bold">${data.fullName}</td>
-                    <td><span class="badge bg-secondary">${data.flightNumber}</span></td>
-                    <td>${data.serviceType}</td>
-                    <td>${statusBadge}</td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-danger" onclick="deletePassenger(${data.id}, this)">Sil</button>
-                    </td>
-                </tr>
-            `;
+    const statusBadge = `
+        <span class="badge ${badgeClass}"
+              style="cursor: pointer;"
+              onclick="toggleStatus(${data.id}, this)"
+              title="Durumu değiştirmek için tıkla">
+            ${data.status}
+        </span>
+    `;
+
+    const newRow = `
+        <tr>
+            <td>${data.id}</td>
+            <td class="fw-bold">${data.fullName}</td>
+            <td><span class="badge bg-secondary">${data.flightNumber}</span></td>
+            <td>${data.serviceType}</td>
+            <td>${statusBadge}</td>
+            <td>
+                <button class="btn btn-sm btn-outline-danger" onclick="deletePassenger(${data.id}, this)">Sil</button>
+            </td>
+        </tr>
+    `;
             tableBody.insertAdjacentHTML('beforeend', newRow);
+            updateCounters();
 
             // Modalı kapat ve formu temizle
             const modalElement = document.getElementById('newPassengerModal');
@@ -173,7 +216,54 @@
             // Butona en yakın <tr> (tablo satırı) elementini bul ve DOM'dan kaldır
             const row = buttonElement.closest('tr');
             row.remove();
+            updateCounters();
         })
         .catch(err => alert("Hata: " + err.message));
     }
+
+
+        function toggleStatus(id, badgeElement) {
+        // Backend'deki ToggleStatus metoduna istek at
+        fetch('/Home/ToggleStatus?id=' + id, {
+            method: 'POST'
+        })
+        .then(response => {
+            if (!response.ok) throw new Error("Durum güncellenemedi!");
+            return response.json();
+        })
+        .then(data => {
+            // C#'tan gelen yeni duruma göre rozetin rengini ve metnini anında güncelle
+            if (data.newStatus === "Bekliyor") {
+                badgeElement.className = "badge bg-warning text-dark";
+                badgeElement.innerText = "Bekliyor";
+            } else {
+                badgeElement.className = "badge bg-success";
+                badgeElement.innerText = "Hizmet Verildi";
+            }
+            updateCounters();
+        })
+        .catch(err => alert("Hata: " + err.message));
+    }
+
+        // Tablodaki durumlara göre sayaç kartlarını anlık yeniden hesaplar
+    function updateCounters() {
+        const rows = document.querySelectorAll("#passengerTable tbody tr");
+        let total = rows.length;
+        let waiting = 0;
+        let completed = 0;
+
+        rows.forEach(row => {
+            const text = row.innerText;
+            if (text.includes("Bekliyor")) {
+                waiting++;
+            } else if (text.includes("Hizmet Verildi")) {
+                completed++;
+            }
+        });
+
+        document.getElementById("totalCount").innerText = total;
+        document.getElementById("waitingCount").innerText = waiting;
+        document.getElementById("completedCount").innerText = completed;
+    }
+
 </script>
